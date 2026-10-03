@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#7ed957">
+<title>MoleSmash: Classroom Whack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#3b2a1a; --muted:#7a6a5a;
+  --font:'Fredoka','Baloo 2','Trebuchet MS','Segoe UI',system-ui,-apple-system,sans-serif;
+  --cell:clamp(84px,min(30vw,calc((100dvh - 230px)/3)),190px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:16px;line-height:1.35;
+  background:
+    repeating-linear-gradient(100deg,rgba(255,255,255,.06) 0 46px,transparent 46px 92px),
+    linear-gradient(#a5e1ff 0%,#d4f4c4 22%,#86dc5a 36%,#55c24a 68%,#3fae48 100%);
+  background-attachment:fixed;
+  overflow-x:hidden;
+}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3{margin:0 0 .4em;line-height:1.1}
+p{margin:.3em 0}
+.muted{color:var(--muted)}
+[hidden]{display:none!important}
+
+/* ---------- scenery ---------- */
+#scenery{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.sun{position:absolute;top:3vh;right:6vw;width:clamp(60px,12vw,120px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,#fff3bf,#ffd43b 60%,#fcc419);
+  box-shadow:0 0 0 14px rgba(255,236,153,.45),0 0 0 32px rgba(255,236,153,.25);animation:sunpulse 6s ease-in-out infinite}
+.cloud{position:absolute;left:-200px;width:120px;height:38px;background:#fff;border-radius:999px;opacity:.95;animation:drift linear infinite}
+.cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:56px;height:56px;left:18px;top:-26px}
+.cloud::after{width:42px;height:42px;left:64px;top:-18px}
+.c1{top:6vh;animation-duration:70s}
+.c2{top:15vh;--sc:.7;animation-duration:95s;animation-delay:-40s}
+.c3{top:10vh;--sc:.5;animation-duration:120s;animation-delay:-80s}
+.flower{position:absolute;opacity:.85;animation:sway 3.5s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes drift{from{transform:translateX(0) scale(var(--sc,1))}to{transform:translateX(calc(100vw + 400px)) scale(var(--sc,1))}}
+@keyframes sunpulse{50%{transform:scale(1.06)}}
+@keyframes sway{50%{transform:rotate(6deg)}}
+
+/* ---------- layout ---------- */
+#app{position:relative;z-index:1}
+.screen{display:none;min-height:100vh;min-height:100dvh;width:100%;position:relative}
+.screen.active{display:flex}
+.center{align-items:center;justify-content:center;flex-direction:column;padding:18px;text-align:center;gap:14px}
+.card{background:rgba(255,255,255,.93);border:4px solid #fff;border-radius:26px;
+  box-shadow:0 8px 0 rgba(0,0,0,.10),0 18px 40px rgba(0,60,0,.18);padding:20px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>label{flex:1 1 200px}
+.row.center{flex-direction:row;justify-content:center;align-items:center;padding:0;gap:12px;text-align:center}
+
+.btn{font-weight:700;font-size:1.15rem;border:0;border-radius:18px;padding:.7em 1.3em;cursor:pointer;color:#fff;
+  background:var(--c,#40c057);box-shadow:0 6px 0 var(--cd,#2b8a3e);transition:transform .08s,box-shadow .08s;touch-action:manipulation}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--cd,#2b8a3e)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.orange{--c:#ff922b;--cd:#d9480f}.btn.blue{--c:#4dabf7;--cd:#1c7ed6}.btn.pink{--c:#ff6fa5;--cd:#d6336c}
+.btn.purple{--c:#9775fa;--cd:#6741d9}.btn.gray{--c:#adb5bd;--cd:#868e96}.btn.red{--c:#ff6b6b;--cd:#e03131}
+.btn.sm{font-size:.95rem;padding:.45em .9em;border-radius:14px;box-shadow:0 4px 0 var(--cd,#2b8a3e)}
+.btn.xl{font-size:1.5rem;padding:.8em 1.6em;border-radius:22px}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:rgba(255,255,255,.92);font-size:1.3rem;cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.14);touch-action:manipulation}
+.icon-btn:active{transform:translateY(2px)}
+
+label{display:block;font-weight:600;font-size:.95rem}
+label.check{display:flex;gap:8px;align-items:center;font-weight:500}
+.inp{width:100%;padding:.6em .8em;margin-top:4px;border:3px solid #d0ebff;border-radius:14px;background:#fff;color:var(--ink);font-size:1rem}
+.inp:focus{outline:none;border-color:#4dabf7;box-shadow:0 0 0 4px rgba(77,171,247,.25)}
+textarea.inp{resize:vertical;min-height:90px;font-family:inherit}
+.notice{border-radius:14px;padding:.7em 1em;font-size:.95rem;margin:10px 0}
+.notice.warn{background:#fff3bf;border:2px solid #ffd43b}
+.notice.err{background:#ffe3e3;border:2px solid #ff8787}
+.notice.ok{background:#d3f9d8;border:2px solid #69db7c}
+
+/* ---------- logo / hero ---------- */
+.logo{font-size:clamp(2.6rem,11vw,5rem);font-weight:700;color:#fff;margin:0;line-height:1;
+  text-shadow:0 4px 0 #2f9e44,0 8px 0 #2b8a3e,0 14px 18px rgba(0,0,0,.25);-webkit-text-stroke:2px #2f9e44;paint-order:stroke fill}
+.logo span{display:inline-block;animation:bounce 1.6s ease-in-out infinite}
+.logo-sub{font-size:clamp(1.1rem,4vw,1.6rem);font-weight:600;color:#fff;text-shadow:0 2px 0 #2f9e44,0 4px 8px rgba(0,0,0,.2);margin:0}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px) rotate(-3deg)}}
+.hero .cell{--cell:min(46vw,200px);margin-bottom:.35rem}
+.home-box{max-width:420px}
+
+/* ---------- mole / hole (all sizes in em, font-size = cell size) ---------- */
+.cell{position:relative;width:var(--cell);height:calc(var(--cell)*.92);font-size:var(--cell);touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.hole{position:absolute;left:3%;right:3%;bottom:4%;height:34%;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 30%,#0d0603 0%,#2b180b 60%,#4a2c14 100%);
+  box-shadow:0 .035em 0 .02em #9a6530,0 .06em 0 .035em #6b4423,0 .1em .06em .03em rgba(0,0,0,.25),inset 0 .03em .05em rgba(0,0,0,.6)}
+.clip{position:absolute;left:0;right:0;top:-.12em;bottom:21%;overflow:hidden;pointer-events:none}
+.mole{position:absolute;left:50%;bottom:0;width:.7em;height:.74em;margin-left:-.35em;transform:translateY(110%);transition:transform .18s ease-in}
+.mole.up{transform:translateY(0);transition:transform .14s cubic-bezier(.3,1.7,.5,1)}
+.torso{position:absolute;left:.06em;right:.06em;top:.34em;bottom:0;border-radius:.3em .3em 0 0;background:linear-gradient(#a2713f,#7a4e26)}
+.head{position:absolute;left:.03em;right:.03em;top:.04em;height:.5em;border-radius:50% 50% 46% 46%/58% 58% 42% 42%;
+  background:radial-gradient(circle at 35% 28%,#cfa06b,#8f5e31 72%);border:.012em solid #5a3a1c;
+  box-shadow:inset -.02em -.03em 0 rgba(0,0,0,.2),0 .01em 0 rgba(0,0,0,.25)}
+.ear{position:absolute;top:-.04em;width:.12em;height:.12em;border-radius:50%;background:#8f5e31;border:.012em solid #5a3a1c}
+.ear.l{left:.03em}.ear.r{right:.03em}
+.ear::after{content:'';position:absolute;inset:.025em;border-radius:50%;background:#ffa8c0}
+.eyes{position:absolute;left:0;right:0;top:.15em;display:flex;justify-content:center;gap:.15em}
+.eyes i{display:block;width:.1em;height:.125em;border-radius:50%;background:#fff;position:relative;border:.01em solid #3b2a1a;animation:blink 4.2s infinite}
+.eyes i::after{content:'';position:absolute;width:.055em;height:.07em;border-radius:50%;background:#2b1b10;left:.019em;top:.03em}
+.nose{position:absolute;left:50%;top:.27em;width:.12em;height:.08em;margin-left:-.06em;border-radius:50%;background:#ff7aa2;border:.01em solid #c2255c}
+.teeth{position:absolute;left:50%;top:.35em;width:.08em;height:.06em;margin-left:-.04em;background:#fff;border:.008em solid #5a3a1c;border-radius:0 0 .02em .02em}
+.cheek{position:absolute;top:.27em;width:.085em;height:.055em;border-radius:50%;background:rgba(255,110,150,.5)}
+.cheek.l{left:.05em}.cheek.r{right:.05em}
+.sign{position:absolute;left:-.07em;right:-.07em;bottom:0;height:.3em;border-radius:.05em;
+  background:linear-gradient(#f6d29a,#e0a45f);border:.018em solid #7a4b20;
+  box-shadow:0 .02em 0 #5c3715,inset 0 .015em 0 rgba(255,255,255,.55);
+  display:flex;align-items:center;justify-content:center;padding:0 .025em;overflow:hidden;text-align:center;font-weight:700;color:#3b2a1a;line-height:1.02}
+.sign span{display:block;min-width:0;max-width:100%;font-size:calc(var(--k,.2)*1em);white-space:nowrap}
+.sign.wrap span{white-space:normal}
+.hand{position:absolute;bottom:.24em;width:.1em;height:.1em;border-radius:50%;background:#7a4e26;border:.012em solid #5a3a1c}
+.hand.l{left:-.08em}.hand.r{right:-.08em}
+.dizzy{position:absolute;top:0;left:50%;margin-left:-.07em;font-size:.14em;display:none;line-height:1}
+.mole.hit .dizzy{display:block;animation:spin .5s linear infinite}
+.mole.hit .head{animation:wob .4s ease}
+.mole.hit .eyes i{background:transparent;border-color:transparent;animation:none}
+.mole.hit .eyes i::after{content:'×';background:none;color:#2b1b10;font-size:.15em;line-height:.7;font-weight:700;width:auto;height:auto;left:-.002em;top:0}
+.mole.good .sign{background:linear-gradient(#d3f9d8,#8ce99a)}
+.mole.bad .sign{background:linear-gradient(#ffe3e3,#ff8787)}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes wob{25%{transform:rotate(-8deg)}60%{transform:rotate(7deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- game screen ---------- */
+#screen-game{flex-direction:column;align-items:center;padding:10px 10px 18px;gap:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.hud{width:min(760px,100%);display:grid;gap:8px}
+.prompt{background:linear-gradient(#f6d29a,#e0a45f);border:4px solid #7a4b20;border-radius:20px;box-shadow:0 6px 0 #5c3715,inset 0 3px 0 rgba(255,255,255,.45);
+  padding:.35em .8em;font-weight:700;font-size:clamp(1.15rem,4.6vw,2rem);text-align:center;line-height:1.1;text-wrap:balance}
+.stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
+.pill{background:rgba(255,255,255,.93);border:3px solid #fff;border-radius:999px;padding:.15em .8em;font-weight:700;font-size:clamp(1rem,3.6vw,1.3rem);
+  box-shadow:0 3px 0 rgba(0,0,0,.12);display:flex;align-items:center;gap:.35em;white-space:nowrap}
+.heart.lost{filter:grayscale(1);opacity:.3}
+.heart.pulse{animation:pop .4s}
+#g-time.urgent{background:#ffe3e3;color:#c92a2a;animation:urgent .6s infinite alternate}
+#g-streak{opacity:.45;transition:opacity .2s}
+#g-streak.on{opacity:1}
+@keyframes urgent{to{transform:scale(1.08)}}
+.tbar{height:14px;border-radius:99px;background:rgba(255,255,255,.55);border:3px solid #fff;overflow:hidden}
+#g-tfill{height:100%;width:100%;background:linear-gradient(90deg,#69db7c,#fcc419,#ff6b6b);background-size:300% 100%;border-radius:99px}
+.arena{display:grid;grid-template-columns:repeat(3,var(--cell));gap:calc(var(--cell)*.08) calc(var(--cell)*.07);justify-content:center;padding:calc(var(--cell)*.14) 0 0}
+.arena.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+.big{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:30;pointer-events:none;text-align:center;padding:20px}
+.big.show{display:flex}
+.big-main{font-size:clamp(2.6rem,14vw,7rem);font-weight:700;color:#fff;line-height:1;
+  text-shadow:0 .04em 0 #f08c00,0 .09em 0 rgba(0,0,0,.2);-webkit-text-stroke:.03em #e8590c;paint-order:stroke fill;animation:pop .5s}
+.big-sub{margin-top:.5em;font-size:clamp(1.3rem,5vw,2.2rem);font-weight:700;color:#fff;background:rgba(47,158,68,.9);padding:.25em .9em;border-radius:18px;max-width:92vw;text-wrap:balance}
+.big-sub:empty{display:none}
+@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(30,60,30,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex}
+.float{position:fixed;transform:translate(-50%,-50%);font-weight:700;font-size:clamp(1.3rem,5vw,2rem);pointer-events:none;z-index:45;color:#fff;
+  text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 8px rgba(0,0,0,.3);animation:floatUp .9s ease-out forwards;white-space:nowrap}
+.float.good{color:#ffe066}.float.bad{color:#ff8787}.float.miss{color:#ffd8a8}
+@keyframes floatUp{to{transform:translate(-50%,-150%);opacity:0}}
+
+/* mallet */
+#mallet{position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:60;opacity:0;transition:opacity .12s;will-change:transform}
+#mallet.show{opacity:1}
+.m-wrap{position:absolute;left:0;top:0;transform-origin:70px -70px;transform:rotate(28deg)}
+.m-handle{position:absolute;left:0;top:-6px;width:104px;height:12px;border-radius:6px;transform-origin:0 50%;transform:rotate(-45deg);
+  background:linear-gradient(#e8b27a,#a86a2c);border:2px solid #6b4423}
+.m-head{position:absolute;left:-30px;top:-20px;width:60px;height:40px;border-radius:12px;transform:rotate(45deg);
+  background:linear-gradient(#ff8787,#e03131);border:3px solid #a61e1e;box-shadow:inset 0 5px 0 rgba(255,255,255,.35)}
+.m-head::before,.m-head::after{content:'';position:absolute;top:0;bottom:0;width:7px;background:#ffd43b}
+.m-head::before{left:6px}.m-head::after{right:6px}
+#mallet.swing .m-wrap{animation:swing .24s ease-out}
+@keyframes swing{0%{transform:rotate(28deg)}35%{transform:rotate(-10deg)}100%{transform:rotate(28deg)}}
+body.mallet-on,body.mallet-on *{cursor:none!important}
+#fx{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50}
+
+/* ---------- start / result ---------- */
+.start-card{width:min(560px,100%)}
+.diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.diff{border:4px solid #e9ecef;background:#fff;border-radius:20px;padding:12px 6px;font-weight:700;cursor:pointer;color:var(--ink);font-size:1rem;touch-action:manipulation;box-shadow:0 4px 0 rgba(0,0,0,.08)}
+.diff .e{font-size:2rem;display:block}
+.diff small{display:block;font-weight:500;color:var(--muted);font-size:.78rem;margin-top:2px}
+.diff.sel{border-color:#40c057;background:#ebfbee;transform:translateY(-3px);box-shadow:0 7px 0 #2b8a3e}
+.result-card{width:min(620px,100%)}
+.r-title{font-size:clamp(1.7rem,6vw,2.4rem);font-weight:700}
+.stars-row{display:flex;justify-content:center;gap:6px;margin:6px 0}
+.star{font-size:clamp(3rem,13vw,4.4rem);filter:grayscale(1);opacity:.3;transform:scale(.6)}
+.star.on{filter:none;opacity:1;animation:starIn .6s forwards}
+@keyframes starIn{0%{transform:scale(.2) rotate(-90deg)}70%{transform:scale(1.3) rotate(10deg)}100%{transform:scale(1) rotate(0)}}
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:12px 0}
+.tile{grid-column:span 2}.tile:nth-child(n+4){grid-column:span 3}
+.tile{background:#f1f9ff;border-radius:16px;padding:10px 6px}
+.tile b{display:block;font-size:clamp(1.2rem,5vw,1.6rem)}.tile span{font-size:.85rem;color:var(--muted);font-weight:600}
+#r-mist-wrap{text-align:left;margin:8px 0;background:#fff9db;border-radius:14px;padding:8px 12px}
+#r-mist-wrap summary{cursor:pointer;font-weight:700}
+#r-mist-wrap ul{margin:6px 0 0;padding-left:20px}
+.sync{min-height:1.6em;font-weight:600;margin:8px 0}
+.sync.ok{color:#2b8a3e}.sync.fail{color:#c92a2a}
+
+/* ---------- teacher ---------- */
+#screen-pin,#screen-teacher{font-size:16px}
+.t-wrap{width:min(1100px,100%);margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:14px}
+.t-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.t-head h1{font-size:1.6rem;margin:0}
+.t-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;padding:10px}
+.tab{border:0;border-radius:14px;padding:.6em 1.1em;font-weight:700;font-size:1rem;background:#e7f5ff;color:#1864ab;cursor:pointer}
+.tab.active{background:#4dabf7;color:#fff;box-shadow:0 4px 0 #1c7ed6}
+.panel{display:none}.panel.active{display:flex;flex-direction:column;gap:14px}
+.round{border:3px solid #d3f9d8;border-radius:20px;padding:14px;margin:12px 0;background:#fcfffc}
+.round-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.badge{background:#40c057;color:#fff;border-radius:99px;padding:.2em .8em;font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.hint{font-size:.88rem;margin-top:6px;color:var(--muted)}.hint.bad{color:#c92a2a;font-weight:600}
+.link-row{display:grid;grid-template-columns:140px 1fr auto auto;gap:8px;align-items:center;margin:8px 0}
+.link-row input{margin:0;font-size:.85rem}
+.table-wrap{overflow-x:auto;border-radius:14px;border:2px solid #e7f5ff}
+table{border-collapse:collapse;width:100%;font-size:.92rem;background:#fff}
+th,td{padding:.55em .7em;text-align:left;border-bottom:1px solid #edf2f7;vertical-align:top;white-space:nowrap}
+th{background:#e7f5ff;position:sticky;top:0}
+td details{white-space:normal;min-width:180px}
+pre.code{background:#1e2a1e;color:#d3f9d8;padding:14px;border-radius:14px;overflow:auto;max-height:340px;font-size:.8rem;line-height:1.4;white-space:pre}
+ol.steps{padding-left:20px}ol.steps li{margin:4px 0}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);background:#2b8a3e;color:#fff;padding:.6em 1.2em;border-radius:99px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:100;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.pin-card{width:min(380px,100%)}
+.pin-card input{text-align:center;font-size:1.8rem;letter-spacing:.4em}
+.shake-it{animation:shake .35s}
+
+@media (max-width:640px){
+  .two{grid-template-columns:1fr}
+  .link-row{grid-template-columns:1fr 1fr}
+  .link-row b{grid-column:1/-1}.link-row input{grid-column:1/-1}
+  .diff small{display:none}
+}
+@media (max-width:600px) and (orientation:portrait){
+  .arena[data-holes="6"]{--cell:clamp(110px,min(41vw,calc((100dvh - 250px)/3.1)),210px);grid-template-columns:repeat(2,var(--cell))}
+}
+@media (max-height:520px) and (orientation:landscape){
+  :root{--cell:clamp(70px,calc((100dvh - 120px)/2.9),150px)}
+  .prompt{font-size:1.1rem;padding:.2em .6em}.stats .pill{font-size:.95rem}
+  #screen-game{gap:6px;padding-top:6px}
+}
+@media (prefers-reduced-motion:reduce){
+  .cloud,.sun,.flower,.logo span{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div id="scenery" aria-hidden="true">
+  <div class="sun"></div>
+  <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+</div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="mallet" aria-hidden="true"><div class="m-wrap"><div class="m-handle"></div><div class="m-head"></div></div></div>
+
+<noscript><p style="padding:20px;font-size:1.3rem">MoleSmash needs JavaScript to run. Please enable it and reload.</p></noscript>
+
+<main id="app">
+
+  <!-- ================= HOME ================= -->
+  <section id="screen-home" class="screen center">
+    <h1 class="logo" id="logo" aria-label="MoleSmash"></h1>
+    <p class="logo-sub">Classroom Whack</p>
+    <div class="hero" id="hero-home" aria-hidden="true"></div>
+    <div class="card home-box">
+      <p style="font-weight:600">Whack the right answers. Dodge the wrong ones!</p>
+      <div class="row center" style="margin-top:10px">
+        <button class="btn xl" id="home-student">🎮 I'm a Student</button>
+        <button class="btn blue" id="home-teacher">🍎 Teacher Portal</button>
+      </div>
+      <div id="home-hint" class="notice warn" hidden>Ask your teacher for your <b>personal MoleSmash link</b>. Open that link on your phone, tablet or computer to play.</div>
+    </div>
+  </section>
+
+  <!-- ================= ACCESS DENIED ================= -->
+  <section id="screen-denied" class="screen center">
+    <div class="hero" id="hero-denied" aria-hidden="true"></div>
+    <div class="card home-box">
+      <h2 id="denied-title">Oops! This link doesn't work</h2>
+      <p id="denied-text" class="muted"></p>
+      <p>Please ask your teacher for a fresh link. 💌</p>
+      <div class="row center" style="margin-top:12px">
+        <button class="btn gray sm" id="denied-teacher">🍎 Teacher login</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TEACHER PIN ================= -->
+  <section id="screen-pin" class="screen center">
+    <div class="card pin-card" id="pin-card">
+      <h2>🍎 Teacher Portal</h2>
+      <p class="muted">Enter your PIN to continue.</p>
+      <input class="inp" id="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="PIN">
+      <div id="pin-msg" class="hint bad" style="min-height:1.4em"></div>
+      <div class="row center">
+        <button class="btn" id="pin-ok">Unlock</button>
+        <button class="btn gray" id="pin-cancel">Back</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TEACHER PORTAL ================= -->
+  <section id="screen-teacher" class="screen">
+    <div class="t-wrap">
+      <header class="card t-head">
+        <div><h1>🍎 Teacher Portal</h1><small class="muted">MoleSmash: Classroom Whack · <span id="save-state">Ready</span></small></div>
+        <div class="t-actions">
+          <button class="btn sm orange" id="t-preview">▶ Preview game</button>
+          <button class="btn sm gray" id="t-lock">🔒 Lock &amp; exit</button>
+        </div>
+      </header>
+      <nav class="card tabs" role="tablist">
+        <button class="tab active" data-tab="builder">📝 Rounds</button>
+        <button class="tab" data-tab="links">🔗 Student links</button>
+        <button class="tab" data-tab="results">📊 Results</button>
+        <button class="tab" data-tab="sync">☁️ Sync</button>
+      </nav>
+      <div id="secret-warning" class="notice warn" hidden>
+        ⚠️ <b>Security reminder:</b> the signing secret (<code>CONFIG.SECRET</code> at the top of the script) is still the default. Change it in the HTML file <u>before</u> you publish the file and create links.
+      </div>
+
+      <!-- Builder -->
+      <section class="panel active" id="panel-builder">
+        <div class="card">
+          <h2>⚙️ Game settings</h2>
+          <div class="row">
+            <label>Seconds per round
+              <select class="inp" id="b-seconds"><option>20</option><option>30</option><option>40</option><option>60</option><option>90</option><option>120</option></select></label>
+            <label>Lives (hearts)
+              <select class="inp" id="b-lives"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+          </div>
+        </div>
+        <div class="card">
+          <h2>📝 Rounds</h2>
+          <p class="muted">Each round has a prompt, the <b>correct</b> answers students must whack, and <b>wrong</b> distractors that cost a heart. Put one answer per line (or separate with commas on a single line).</p>
+          <div id="rounds-list"></div>
+          <div class="row">
+            <button class="btn" id="b-add">➕ Add round</button>
+            <button class="btn gray sm" id="b-reset">↺ Load sample rounds</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Links -->
+      <section class="panel" id="panel-links">
+        <div class="card">
+          <h2>🔗 Student link generator</h2>
+          <p class="muted">Each link contains the student's name, your rounds and a security signature. It works on any phone, tablet or PC, and nothing has to be stored on the student's device.</p>
+          <label style="margin-top:10px">Web address where this game file is published
+            <input class="inp" id="l-base" placeholder="https://your-school.example/molesmash.html" autocomplete="off"></label>
+          <div id="l-base-warn" class="notice warn" hidden></div>
+          <label style="margin-top:10px">Student names (one per line)
+            <textarea class="inp" id="l-names" rows="6" placeholder="Maya&#10;Omar&#10;Lina"></textarea></label>
+          <div class="row" style="margin-top:10px">
+            <label>Link expires
+              <select class="inp" id="l-exp">
+                <option value="0">Never</option><option value="1">After 1 day</option><option value="3">After 3 days</option>
+                <option value="7">After 7 days</option><option value="14">After 14 days</option><option value="30">After 30 days</option>
+                <option value="custom">On a specific date…</option>
+              </select></label>
+            <label id="l-exp-date-wrap" hidden>Last valid day
+              <input type="date" class="inp" id="l-exp-date"></label>
+          </div>
+          <label class="check" style="margin-top:10px"><input type="checkbox" id="l-sync" checked> Include Google Sheet sync in the links (results are sent automatically)</label>
+          <div id="l-errors" class="notice err" hidden></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="l-gen">✨ Generate links</button>
+            <button class="btn blue" id="l-copyall" disabled>📋 Copy all</button>
+          </div>
+        </div>
+        <div class="card" id="l-out-card" hidden>
+          <h3>Your links</h3>
+          <div id="l-out"></div>
+          <div id="l-len-warn" class="notice warn" hidden>Some links are very long (over 2,000 characters). Use fewer or shorter rounds if a messaging app cuts them off.</div>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <section class="panel" id="panel-results">
+        <div class="card">
+          <h2>📊 Results &amp; analytics</h2>
+          <div class="row">
+            <label>Search student<input class="inp" id="r-search" placeholder="Type a name…"></label>
+            <label>View
+              <select class="inp" id="r-view"><option value="all">All attempts</option><option value="best">Best per student</option></select></label>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn blue sm" id="r-fetch">☁️ Load from Google Sheet</button>
+            <button class="btn sm" id="r-csv">⬇ Export to CSV</button>
+            <button class="btn red sm" id="r-clear">🗑 Clear local previews</button>
+          </div>
+          <div id="r-msg" class="hint" style="min-height:1.4em"></div>
+          <div class="table-wrap"><table>
+            <thead id="r-head"></thead><tbody id="r-body"></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- Sync -->
+      <section class="panel" id="panel-sync">
+        <div class="card">
+          <h2>☁️ Google Sheets sync</h2>
+          <p class="muted">When a student finishes a game, the result is sent in the background to your Google Sheet through a free Google Apps Script web app.</p>
+          <label>Google Apps Script Web App URL
+            <input class="inp" id="s-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="s-save">💾 Save URL</button>
+            <button class="btn orange" id="s-test">🧪 Send test row</button>
+          </div>
+          <div id="s-msg" class="notice ok" hidden></div>
+        </div>
+        <div class="card">
+          <h3>One-time setup (about 3 minutes)</h3>
+          <ol class="steps">
+            <li>Create a new Google Sheet. Open <b>Extensions → Apps Script</b>.</li>
+            <li>Delete the sample code, paste the script below and click <b>Save</b>.</li>
+            <li>Click <b>Deploy → New deployment → Web app</b>. Set <i>Execute as: Me</i> and <i>Who has access: Anyone</i>.</li>
+            <li>Authorize when asked, copy the <b>Web app URL</b> (ends in <code>/exec</code>) and paste it above.</li>
+            <li>Press <b>Send test row</b>. If you edit the script later, use <b>Deploy → Manage deployments → Edit → New version</b>.</li>
+          </ol>
+          <div class="row" style="margin:8px 0"><button class="btn blue sm" id="s-copy">📋 Copy script</button></div>
+          <pre class="code" id="s-code"></pre>
+        </div>
+        <div class="card">
+          <h3>🔐 Security</h3>
+          <p class="muted">Change the teacher PIN (default is 1234). Links are signed with <code>CONFIG.SECRET</code> inside the HTML file.</p>
+          <div class="row">
+            <label>Current PIN<input class="inp" id="p-old" type="password" inputmode="numeric" autocomplete="off"></label>
+            <label>New PIN (4–12 digits)<input class="inp" id="p-new" type="password" inputmode="numeric" autocomplete="off" maxlength="12"></label>
+            <button class="btn sm" id="p-save">Save PIN</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ================= STUDENT START ================= -->
+  <section id="screen-start" class="screen center">
+    <div class="card start-card">
+      <div class="hero" id="hero-start" aria-hidden="true" style="display:flex;justify-content:center"></div>
+      <h1 style="font-size:clamp(1.7rem,6vw,2.4rem)">Hi, <span id="st-name"></span>! 👋</h1>
+      <p class="muted" id="st-info"></p>
+      <p style="font-weight:600">Pick your speed:</p>
+      <div class="diffs" id="st-diffs"></div>
+      <button class="btn xl" id="st-start">🔨 Start whacking!</button>
+      <div class="row center" style="margin-top:12px">
+        <button class="btn gray sm" id="st-back" hidden>↩ Teacher portal</button>
+        <button class="icon-btn" id="st-mute" aria-label="Sound on/off">🔊</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <div class="prompt" id="g-prompt" dir="auto"></div>
+      <div class="stats">
+        <div class="pill" id="g-round">Round 1/1</div>
+        <div class="pill">⭐ <span id="g-score">0</span></div>
+        <div class="pill" id="g-hearts" aria-label="Lives"></div>
+        <div class="pill" id="g-streak">🔥 <span>0</span></div>
+        <div class="pill" id="g-time">⏱ <span>0:40</span></div>
+        <button class="icon-btn" id="g-mute" aria-label="Sound on/off">🔊</button>
+        <button class="icon-btn" id="g-pause" aria-label="Pause">⏸</button>
+      </div>
+      <div class="tbar"><div id="g-tfill"></div></div>
+    </div>
+    <div class="arena" id="arena"></div>
+    <div class="big" id="big"><div class="big-main"></div><div class="big-sub"></div></div>
+    <div class="overlay" id="pause">
+      <div class="card" style="text-align:center">
+        <h2>⏸ Paused</h2>
+        <div class="row center" style="margin-top:10px">
+          <button class="btn" id="pa-resume">▶ Resume</button>
+          <button class="btn orange" id="pa-restart">🔄 Restart</button>
+          <button class="btn gray" id="pa-quit">🚪 Quit</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RESULT ================= -->
+  <section id="screen-result" class="screen center">
+    <div class="card result-card">
+      <div class="r-title" id="r-title"></div>
+      <div class="muted" id="r-sub"></div>
+      <div class="stars-row" id="r-stars"><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span></div>
+      <div class="tiles">
+        <div class="tile"><b id="r-score">0</b><span>Score</span></div>
+        <div class="tile"><b id="r-hits">0</b><span>Whacked</span></div>
+        <div class="tile"><b id="r-time">0:00</b><span>Time</span></div>
+        <div class="tile"><b id="r-diff">-</b><span>Level</span></div>
+        <div class="tile"><b id="r-miscount">0</b><span>Oopsies</span></div>
+      </div>
+      <details id="r-mist-wrap" hidden><summary>👀 See my oopsies</summary><ul id="r-mistakes"></ul></details>
+      <div class="sync" id="sync-status"></div>
+      <div class="row center">
+        <button class="btn" id="r-again">🔄 Play again</button>
+        <button class="btn blue" id="r-change">🎚 Change level</button>
+        <button class="btn gray" id="r-back" hidden>↩ Teacher portal</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Google Apps Script (shown in Teacher → Sync) -->
+<script type="text/plain" id="gas-code">
+/**
+ * MoleSmash: Classroom Whack - Google Sheets receiver
+ * Paste into Extensions > Apps Script, then Deploy > New deployment > Web app
+ * (Execute as: Me, Who has access: Anyone).
+ */
+var SHEET_NAME = 'MoleSmash Results';
+var HEADERS = ['Timestamp','Date','Student','Attempt','Score','Stars','Time Spent (s)',
+  'Difficulty','Outcome','Correct Hits','Total Targets','Mistake Count','Mistakes',
+  'Mistakes JSON','Submission ID'];
+
+function getSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) sh = ss.insertSheet(SHEET_NAME);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(HEADERS);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#d3f9d8');
+  }
+  return sh;
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+    var d = JSON.parse(e.postData.contents);
+    var sh = getSheet_();
+    if (d.id) {                                   // ignore duplicate submissions
+      var last = sh.getLastRow();
+      if (last > 1) {
+        var ids = sh.getRange(2, HEADERS.length, last - 1, 1).getValues();
+        for (var i = 0; i < ids.length; i++) {
+          if (String(ids[i][0]) === String(d.id)) return json_({ok: true, duplicate: true});
+        }
+      }
+    }
+    var mistakes = d.mistakes || [];
+    var text = mistakes.map(function (m) {
+      return (m.type === 'wrong_hit' ? 'WRONG HIT: ' : 'MISSED: ') + m.item + ' [R' + m.round + ']';
+    }).join(' | ');
+    sh.appendRow([
+      d.timestamp || new Date().toISOString(), d.date || '', d.studentName || '',
+      d.attempt || 1, d.score || 0, d.stars || 0, d.timeSpentSec || 0,
+      d.difficulty || '', d.outcome || '', d.correctHits || 0, d.totalTargets || 0,
+      mistakes.length, text, JSON.stringify(mistakes), d.id || ''
+    ]);
+    return json_({ok: true});
+  } catch (err) {
+    return json_({ok: false, error: String(err)});
+  } finally {
+    try { lock.releaseLock(); } catch (x) {}
+  }
+}
+
+function safeParse_(s) { try { return JSON.parse(s) || []; } catch (e) { return []; } }
+
+function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'list') {
+    var values = getSheet_().getDataRange().getValues();
+    var rows = values.slice(1).map(function (r) {
+      return {
+        timestamp: r[0] instanceof Date ? r[0].toISOString() : String(r[0]),
+        student: String(r[2]), attempt: Number(r[3]), score: Number(r[4]),
+        stars: Number(r[5]), timeSpentSec: Number(r[6]), difficulty: String(r[7]),
+        outcome: String(r[8]), correctHits: Number(r[9]), totalTargets: Number(r[10]),
+        mistakes: safeParse_(r[13]), id: String(r[14])
+      };
+    });
+    return json_({ok: true, rows: rows});
+  }
+  return json_({ok: true, message: 'MoleSmash sync is running'});
+}
+</script>
+
+<script>
+'use strict';
+/* =====================================================================
+   CONFIG - edit BEFORE you publish this file
+   SECRET : signs student links. Change it to any long random text.
+            Every device that opens a link must load this same file.
+   ===================================================================== */
+const CONFIG = {
+  SECRET: 'molesmash-change-this-secret',
+  DEFAULT_PIN: '1234',
+  MAX_ITEM_LEN: 30
+};
+
+(function () {
+
+/* ---------------------------------------------------------------
+   Crypto: SHA-256 + HMAC (pure JS, works on http:// and file:// too)
+   --------------------------------------------------------------- */
+//#region crypto
+function sha256(msg) {
+  const mp = Math.pow, mw = mp(2, 32), H = [], K = [], isc = {};
+  let pc = 0;
+  for (let c = 2; pc < 64; c++) {
+    if (!isc[c]) {
+      for (let i = 0; i < 313; i += c) isc[i] = c;
+      H[pc] = (mp(c, .5) * mw) | 0;
+      K[pc++] = (mp(c, 1 / 3) * mw) | 0;
+    }
+  }
+  const len = msg.length, padLen = ((len + 9 + 63) >> 6) << 6, buf = new Uint8Array(padLen);
+  buf.set(msg); buf[len] = 0x80;
+  const dv = new DataView(buf.buffer), bits = len * 8;
+  dv.setUint32(padLen - 8, Math.floor(bits / mw));
+  dv.setUint32(padLen - 4, bits >>> 0);
+  let h = H.slice(0, 8);
+  const w = new Array(64);
+  for (let off = 0; off < padLen; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4) | 0;
+    for (let i = 16; i < 64; i++) {
+      const a = w[i - 15], b = w[i - 2];
+      const s0 = ((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3);
+      const s1 = ((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+    }
+    let a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for (let i = 0; i < 64; i++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [(h[0] + a) | 0, (h[1] + b) | 0, (h[2] + c) | 0, (h[3] + d) | 0,
+         (h[4] + e) | 0, (h[5] + f) | 0, (h[6] + g) | 0, (h[7] + hh) | 0];
+  }
+  const out = new Uint8Array(32), odv = new DataView(out.buffer);
+  h.forEach((v, i) => odv.setUint32(i * 4, v >>> 0));
+  return out;
+}
+function hmac256(key, msg) {
+  if (key.length > 64) key = sha256(key);
+  const ip = new Uint8Array(64 + msg.length), op = new Uint8Array(96);
+  for (let i = 0; i < 64; i++) { const k = key[i] || 0; ip[i] = k ^ 0x36; op[i] = k ^ 0x5c; }
+  ip.set(msg, 64);
+  op.set(sha256(ip), 64);
+  return sha256(op);
+}
+//#endregion
+
+/* ---------------------------------------------------------------
+   Helpers
+   --------------------------------------------------------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = n => Math.floor(Math.random() * n);
+const pick = a => a[randInt(a.length)];
+const clone = o => JSON.parse(JSON.stringify(o));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pad2 = n => String(n).padStart(2, '0');
+const fmtTime = s => { s = Math.max(0, Math.round(Number(s) || 0)); return Math.floor(s / 60) + ':' + pad2(s % 60); };
+const ymd = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const hms = d => pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const num = (v, d = 0) => { v = Number(v); return isFinite(v) ? v : d; };
+const safeEq = (a, b) => { if (a.length !== b.length) return false; let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i); return r === 0; };
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+function bytesToB64u(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64uToBytes(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  const bin = atob(str), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+const toHex = b => Array.from(b).map(x => pad2(x.toString(16))).join('');
+const pinHash = pin => toHex(sha256(enc.encode('molesmash|' + pin)));
+
+let toastT = 0;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall back */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+
+/* UI timers that belong to a game session (wiped on every reset) */
+const timers = new Set();
+function later(fn, ms) { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; }
+function clearTimers() { timers.forEach(clearTimeout); timers.clear(); }
+
+/* ---------------------------------------------------------------
+   Teacher storage (only on the teacher's own device)
+   --------------------------------------------------------------- */
+const STORE_KEY = 'molesmash.teacher.v1';
+const SAMPLE_ROUNDS = [
+  { prompt: 'Whack all: Living Things', correct: 'Dog\nTree\nBird\nFish\nFlower', wrong: 'Rock\nChair\nCar\nCloud\nPencil' },
+  { prompt: 'Whack the answer: 6 × 7', correct: '42', wrong: '36\n48\n49\n40\n13\n54' },
+  { prompt: 'Whack all: Even numbers', correct: '2\n4\n6\n8\n10', wrong: '1\n3\n5\n7\n9\n11' }
+];
+const Store = {
+  data: null,
+  load() {
+    let d = null;
+    try { const s = localStorage.getItem(STORE_KEY); if (s) d = JSON.parse(s); } catch (e) { /* storage blocked */ }
+    this.data = Object.assign({ pinHash: '', rounds: clone(SAMPLE_ROUNDS), seconds: 40, lives: 3, syncUrl: '', baseUrl: '', results: [] }, d || {});
+    if (!Array.isArray(this.data.rounds) || !this.data.rounds.length) this.data.rounds = clone(SAMPLE_ROUNDS);
+    if (!Array.isArray(this.data.results)) this.data.results = [];
+  },
+  save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(this.data)); return true; } catch (e) { return false; }
+  }
+};
+let saveT = 0;
+function scheduleSave() {
+  $('#save-state').textContent = 'Saving…';
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    const ok = Store.save();
+    $('#save-state').textContent = ok ? 'Saved ✓ ' + hms(new Date()) : '⚠ Could not save (private mode?)';
+  }, 350);
+}
+
+/* ---------------------------------------------------------------
+   Rounds parsing / validation
+   --------------------------------------------------------------- */
+function parseList(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const lines = t.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const items = lines.length > 1 ? lines : t.split(/[,;،؛]/).map(s => s.trim()).filter(Boolean);
+  const seen = new Set(), out = [];
+  for (const it of items) {
+    const k = it.toLowerCase();
+    if (!seen.has(k)) { seen.add(k); out.push(it.slice(0, CONFIG.MAX_ITEM_LEN)); }
+  }
+  return out;
+}
+function buildRounds(raw) {
+  return raw.map(r => {
+    const correct = parseList(r.correct);
+    const cs = new Set(correct.map(x => x.toLowerCase()));
+    const wrong = parseList(r.wrong).filter(x => !cs.has(x.toLowerCase()));
+    return { prompt: String(r.prompt || '').trim().slice(0, 140), correct, wrong };
+  });
+}
+function validateRounds(rounds) {
+  const errs = [];
+  if (!rounds.length) errs.push('Add at least one round.');
+  rounds.forEach((r, i) => {
+    if (!r.prompt) errs.push(`Round ${i + 1}: add a prompt.`);
+    if (r.correct.length < 1) errs.push(`Round ${i + 1}: add at least 1 correct answer.`);
+    if (r.wrong.length < 2) errs.push(`Round ${i + 1}: add at least 2 wrong answers.`);
+  });
+  return errs;
+}
+
+/* ---------------------------------------------------------------
+   Signed links  (?student=Name&code=<payload>.<signature>)
+   --------------------------------------------------------------- */
+function signPayload(obj) {
+  const p = bytesToB64u(enc.encode(JSON.stringify(obj)));
+  const sig = bytesToB64u(hmac256(enc.encode(CONFIG.SECRET), enc.encode(p)).subarray(0, 16));
+  return p + '.' + sig;
+}
+function parseLink(student, code) {
+  try {
+    if (!student || !code) return { ok: false, reason: 'missing' };
+    const i = code.lastIndexOf('.');
+    if (i < 1) return { ok: false, reason: 'bad' };
+    const p = code.slice(0, i), sig = code.slice(i + 1);
+    const expect = bytesToB64u(hmac256(enc.encode(CONFIG.SECRET), enc.encode(p)).subarray(0, 16));
+    if (!safeEq(sig, expect)) return { ok: false, reason: 'bad' };
+    const o = JSON.parse(dec.decode(b64uToBytes(p)));
+    if (!o || o.v !== 1 || typeof o.n !== 'string' || !Array.isArray(o.r)) return { ok: false, reason: 'bad' };
+    if (o.n.normalize('NFC') !== student.trim().normalize('NFC')) return { ok: false, reason: 'bad' };
+    if (o.e && Date.now() > Number(o.e)) return { ok: false, reason: 'expired' };
+    const rounds = o.r.map(x => ({
+      prompt: String(x[0] || '').slice(0, 140),
+      correct: (Array.isArray(x[1]) ? x[1] : []).map(s => String(s).slice(0, CONFIG.MAX_ITEM_LEN)),
+      wrong: (Array.isArray(x[2]) ? x[2] : []).map(s => String(s).slice(0, CONFIG.MAX_ITEM_LEN))
+    })).filter(r => r.prompt && r.correct.length && r.wrong.length);
+    if (!rounds.length) return { ok: false, reason: 'bad' };
+    const u = typeof o.u === 'string' && /^https:\/\//i.test(o.u) ? o.u : '';
+    return {
+      ok: true,
+      cfg: {
+        name: o.n.slice(0, 60), rounds,
+        seconds: Math.min(180, Math.max(10, num(o.t, 40))),
+        lives: Math.min(5, Math.max(1, num(o.l, 3))),
+        syncUrl: u, mode: 'link', linkId: sig
+      }
+    };
+  } catch (e) { return { ok: false, reason: 'bad' }; }
+}
+
+/* ---------------------------------------------------------------
+   Screen routing + mallet cursor
+   --------------------------------------------------------------- */
+const MALLET_SCREENS = ['home', 'denied', 'start', 'game', 'result'];
+const finePointer = !!(window.matchMedia && matchMedia('(pointer:fine)').matches);
+let current = 'home';
+const malletEl = $('#mallet');
+
+function show(name) {
+  current = name;
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+  document.body.dataset.screen = name;
+  const on = finePointer && MALLET_SCREENS.includes(name);
+  document.body.classList.toggle('mallet-on', on);
+  if (!on) malletEl.classList.remove('show');
+  window.scrollTo(0, 0);
+}
+function placeMallet(x, y) { malletEl.style.transform = `translate(${x}px,${y}px)`; }
+function swingMallet() { malletEl.classList.remove('swing'); void malletEl.offsetWidth; malletEl.classList.add('swing'); }
+
+window.addEventListener('pointermove', e => {
+  if (e.pointerType === 'touch' || !document.body.classList.contains('mallet-on')) return;
+  placeMallet(e.clientX, e.clientY); malletEl.classList.add('show');
+}, { passive: true });
+document.documentElement.addEventListener('mouseleave', () => malletEl.classList.remove('show'));
+window.addEventListener('pointerdown', e => {
+  Sound.init();
+  if (!MALLET_SCREENS.includes(current)) return;
+  if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+    if (current !== 'game') return;
+    placeMallet(e.clientX, e.clientY); malletEl.classList.add('show'); swingMallet();
+    later(() => malletEl.classList.remove('show'), 420);
+  } else if (document.body.classList.contains('mallet-on')) {
+    placeMallet(e.clientX, e.clientY); malletEl.classList.add('show'); swingMallet();
+  }
+}, true);
+window.addEventListener('contextmenu', e => { if (current === 'game') e.preventDefault(); });
+
+/* ---------------------------------------------------------------
+   Sound (Web Audio, no files)
+   --------------------------------------------------------------- */
+const Sound = (() => {
+  let ctx = null, master = null, muted = false;
+  function init() {
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        ctx = new AC(); master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { /* audio unavailable */ }
+  }
+  function tone(f, dur, o = {}) {
+    if (!ctx || muted) return;
+    const { type = 'sine', vol = .3, delay = 0, to = null } = o;
+    const t0 = ctx.currentTime + delay, osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(f, t0);
+    if (to) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .012);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    osc.connect(g); g.connect(master); osc.start(t0); osc.stop(t0 + dur + .05);
+  }
+  function noise(dur, o = {}) {
+    if (!ctx || muted) return;
+    const { vol = .3, delay = 0, freq = 900 } = o;
+    const t0 = ctx.currentTime + delay, n = Math.floor(ctx.sampleRate * dur);
+    const b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const s = ctx.createBufferSource(); s.buffer = b;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+    const g = ctx.createGain(); g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(master); s.start(t0);
+  }
+  return {
+    init, get muted() { return muted; }, setMuted(v) { muted = !!v; },
+    bonk() { tone(220, .16, { vol: .5, to: 70 }); noise(.07, { vol: .35, freq: 1200 }); },
+    thud() { tone(150, .08, { vol: .22, to: 80 }); },
+    squeak() { tone(900, .09, { type: 'triangle', vol: .26, to: 1700 }); tone(1500, .1, { type: 'triangle', vol: .18, delay: .08, to: 1000 }); },
+    good() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .14, { type: 'triangle', vol: .24, delay: .05 + i * .06 })); },
+    oops() { tone(180, .28, { type: 'sawtooth', vol: .2, to: 90 }); tone(140, .3, { type: 'square', vol: .1, delay: .05, to: 70 }); },
+    pop() { tone(380, .08, { vol: .14, to: 620 }); },
+    miss() { tone(330, .14, { vol: .14, to: 220 }); },
+    tick() { tone(880, .07, { type: 'square', vol: .08 }); },
+    go() { tone(660, .12, { type: 'triangle', vol: .25 }); tone(990, .25, { type: 'triangle', vol: .25, delay: .1 }); },
+    click() { tone(600, .05, { type: 'triangle', vol: .14 }); },
+    roundClear() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .16, { type: 'triangle', vol: .24, delay: i * .08 })); },
+    timeUp() { [660, 523, 392].forEach((f, i) => tone(f, .18, { type: 'triangle', vol: .22, delay: i * .12 })); },
+    star(i) { tone(700 + i * 220, .25, { type: 'triangle', vol: .26 }); },
+    win() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .2, { type: 'triangle', vol: .26, delay: i * .11 })); },
+    lose() { [392, 349, 311, 262].forEach((f, i) => tone(f, .24, { type: 'sine', vol: .22, delay: i * .16 })); }
+  };
+})();
+function syncMuteButtons() { $$('#g-mute,#st-mute').forEach(b => b.textContent = Sound.muted ? '🔇' : '🔊'); }
+function toggleMute() { Sound.setMuted(!Sound.muted); syncMuteButtons(); Sound.init(); Sound.click(); }
+
+/* ---------------------------------------------------------------
+   Particles (stars + confetti on a canvas)
+   --------------------------------------------------------------- */
+const fx = (() => {
+  const cv = $('#fx'), ctx = cv.getContext ? cv.getContext('2d') : null;
+  let ps = [], running = false, dpr = 1;
+  const COLORS = ['#ffd43b', '#ff8fab', '#74c0fc', '#69db7c', '#ffa94d', '#b197fc'];
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.floor(innerWidth * dpr); cv.height = Math.floor(innerHeight * dpr);
+  }
+  function star(x, y, r, rot) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const rad = i % 2 ? r * .45 : r, a = rot + i * Math.PI / 5 - Math.PI / 2;
+      ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  function add(p) { ps.push(Object.assign({ rot: rand(0, 6), vr: rand(-.3, .3), life: 1, decay: rand(.014, .026), g: .35 }, p)); }
+  function burst(x, y, kind) {
+    if (!ctx) return;
+    if (kind === 'good') {
+      for (let i = 0; i < 14; i++) { const a = rand(0, Math.PI * 2), s = rand(3, 9); add({ t: 's', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 3, size: rand(8, 15), c: pick(COLORS) }); }
+      for (let i = 0; i < 12; i++) { const a = rand(0, Math.PI * 2), s = rand(2, 7); add({ t: 'r', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 4, size: rand(5, 9), c: pick(COLORS) }); }
+    } else if (kind === 'bad') {
+      for (let i = 0; i < 9; i++) { const a = rand(0, Math.PI * 2), s = rand(1, 4); add({ t: 'c', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, size: rand(7, 14), c: '#adb5bd', g: -.02, decay: .03 }); }
+    } else if (kind === 'party') {
+      for (let i = 0; i < 90; i++) add({ t: Math.random() < .3 ? 's' : 'r', x: rand(0, innerWidth), y: rand(-40, innerHeight * .25), vx: rand(-2, 2), vy: rand(1, 5), size: rand(7, 14), c: pick(COLORS), g: .08, decay: .006 });
+    }
+    if (!running) { running = true; requestAnimationFrame(loop); }
+  }
+  function loop() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ps = ps.filter(p => p.life > 0 && p.y < innerHeight + 60);
+    for (const p of ps) {
+      p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5)); ctx.fillStyle = p.c; ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1;
+      if (p.t === 's') star(p.x, p.y, p.size, p.rot);
+      else if (p.t === 'c') { ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 7); ctx.fill(); }
+      else { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+    if (ps.length) requestAnimationFrame(loop); else { running = false; ctx.clearRect(0, 0, innerWidth, innerHeight); }
+  }
+  function clear() { ps = []; if (ctx) ctx.clearRect(0, 0, cv.width, cv.height); }
+  window.addEventListener('resize', resize); resize();
+  return { burst, clear };
+})();
+function floatText(txt, x, y, cls) {
+  const d = document.createElement('div');
+  d.className = 'float ' + (cls || ''); d.textContent = txt; d.style.left = x + 'px'; d.style.top = y + 'px';
+  document.body.appendChild(d); d.addEventListener('animationend', () => d.remove());
+}
+
+/* ---------------------------------------------------------------
+   Mole markup
+   --------------------------------------------------------------- */
+const MOLE_HTML = '<div class="mole"><div class="torso"></div><div class="head"><span class="ear l"></span><span class="ear r"></span><div class="eyes"><i></i><i></i></div><span class="cheek l"></span><span class="cheek r"></span><span class="nose"></span><span class="teeth"></span></div><div class="sign"><span dir="auto"></span></div><span class="hand l"></span><span class="hand r"></span><span class="dizzy">💫</span></div>';
+const cellHtml = i => `<div class="cell" data-i="${i}"><div class="hole"></div><div class="clip">${MOLE_HTML}</div></div>`;
+const lenK = t => { const n = Array.from(t).length; return n <= 2 ? .22 : n <= 4 ? .2 : n <= 6 ? .17 : n <= 9 ? .14 : n <= 13 ? .115 : .095; };
+
+function setSign(moleEl, text, fit) {
+  const sign = $('.sign', moleEl), span = sign.firstElementChild;
+  span.textContent = text;
+  let k = lenK(text);
+  sign.style.setProperty('--k', k);
+  sign.classList.toggle('wrap', /\s/.test(text) && Array.from(text).length > 9);
+  if (fit && sign.clientWidth > 0) {
+    let guard = 0;
+    while (guard++ < 10 && k > .06 && (span.scrollWidth > span.clientWidth + 1 || span.scrollHeight > sign.clientHeight)) {
+      k *= .9; sign.style.setProperty('--k', k);
+    }
+  }
+}
+function heroMole(hostId, text) {
+  const host = $('#' + hostId); host.innerHTML = cellHtml(0);
+  const m = $('.mole', host); m.classList.add('up'); setSign(m, text, false);
+}
+
+/* ---------------------------------------------------------------
+   Game
+   --------------------------------------------------------------- */
+const DIFF = {
+  easy:   { key: 'easy',   label: 'Easy',   emoji: '🟢', holes: 6, up: [2500, 3000], gap: [1000, 1400], max: 2, pc: .55, desc: 'Moles stay longer' },
+  medium: { key: 'medium', label: 'Medium', emoji: '🟡', holes: 9, up: [1600, 2000], gap: [700, 1000],  max: 3, pc: .5,  desc: 'Balanced pace' },
+  hard:   { key: 'hard',   label: 'Hard',   emoji: '🔴', holes: 9, up: [1000, 1200], gap: [450, 700],   max: 3, pc: .5,  desc: 'Quick reflexes!' }
+};
+let cfg = null, difficulty = 'medium';
+let G = null, raf = 0, lastTs = 0, runId = 0;
+let cells = [], moleEls = [];
+let attempt = 0, memAttempt = 0, shownResult = null, syncState = 'idle';
+
+function newState() {
+  return {
+    run: ++runId, t: 0, phase: 'idle', phaseUntil: 0, paused: false,
+    rIdx: -1, round: null, moles: [], nextSpawn: 0, lastSpawn: 0, lastCell: -1,
+    score: 0, lives: cfg.lives, streak: 0, bestStreak: 0, hits: 0,
+    totalTargets: cfg.rounds.reduce((a, r) => a + r.correct.length, 0),
+    mistakes: [], roundLog: [], timeSpent: 0, timerShown: -1, countdownShown: -1
+  };
+}
+
+/* Wipes every trace of the previous round: loop, timers, moles, particles,
+   floating text, score, mistakes, answer logs and the result screen. */
+function wipeSession() {
+  cancelAnimationFrame(raf); raf = 0; lastTs = 0;
+  clearTimers();
+  if (G) { G.moles.length = 0; G.mistakes.length = 0; G.roundLog.length = 0; G.round = null; }
+  G = null; shownResult = null; syncState = 'idle'; cells = []; moleEls = [];
+  const a = $('#arena'); a.textContent = ''; a.classList.remove('shake');
+  fx.clear(); $$('.float').forEach(n => n.remove());
+  hideBig(); $('#pause').classList.remove('show');
+  $('#g-score').textContent = '0'; $('#g-streak span').textContent = '0'; $('#g-streak').classList.remove('on');
+  $('#g-tfill').style.width = '100%';
+  $('#r-mistakes').textContent = ''; $('#r-mist-wrap').hidden = true; $('#r-mist-wrap').open = false;
+  $$('#r-stars .star').forEach(s => { s.classList.remove('on'); s.style.animationDelay = ''; });
+  $('#sync-status').textContent = ''; $('#sync-status').className = 'sync';
+}
+
+function nextAttempt() {
+  if (cfg.mode === 'link') {
+    const key = 'ms_att_' + cfg.linkId;
+    try { const n = (parseInt(sessionStorage.getItem(key), 10) || 0) + 1; sessionStorage.setItem(key, String(n)); return n; } catch (e) { /* ignore */ }
+  }
+  return ++memAttempt;
+}
+
+function buildArena(n) {
+  const a = $('#arena'); a.innerHTML = ''; a.dataset.holes = n;
+  for (let i = 0; i < n; i++) a.insertAdjacentHTML('beforeend', cellHtml(i));
+  cells = $$('.cell', a); moleEls = cells.map(c => $('.mole', c));
+}
+
+function startGame() {
+  Sound.init();
+  wipeSession();
+  G = newState();
+  attempt = nextAttempt();
+  buildArena(DIFF[difficulty].holes);
+  renderHearts(); $('#g-round').textContent = `Round 1/${cfg.rounds.length}`;
+  $('#g-prompt').textContent = cfg.rounds[0].prompt;
+  $('#g-time span').textContent = fmtTime(cfg.seconds); $('#g-time').classList.remove('urgent');
+  show('game');
+  G.phase = 'countdown'; G.phaseUntil = 2100;
+  raf = requestAnimationFrame(loop);
+}
+
+function loop(ts) {
+  raf = requestAnimationFrame(loop);
+  if (!G) return;
+  const dt = lastTs ? Math.min(ts - lastTs, 100) : 16;
+  lastTs = ts;
+  if (G.paused) return;
+  step(dt);
+}
+
+function step(dt) {
+  G.t += dt;
+  if (G.phase !== 'countdown') G.timeSpent += dt;
+  switch (G.phase) {
+    case 'countdown': {
+      const left = G.phaseUntil - G.t, n = Math.ceil(left / 700);
+      if (left <= 0) { Sound.go(); beginRound(0); }
+      else if (n !== G.countdownShown) { G.countdownShown = n; showBig(String(n), 'count'); Sound.tick(); }
+      break;
+    }
+    case 'intro': if (G.t >= G.phaseUntil) startPlay(); break;
+    case 'play': playStep(); break;
+    case 'between':
+      if (G.t >= G.phaseUntil) { if (G.rIdx + 1 >= cfg.rounds.length) finishGame('completed'); else beginRound(G.rIdx + 1); }
+      break;
+    case 'dying': if (G.t >= G.phaseUntil) finishGame('lives'); break;
+  }
+  if (G && G.phase !== 'over') updateMoles();
+}
+
+function beginRound(i) {
+  const R = cfg.rounds[i];
+  G.rIdx = i;
+  G.round = { idx: i, prompt: R.prompt, pool: R.correct.slice(), wrong: R.wrong.slice(), total: R.correct.length, found: 0, endsAt: 0, dur: cfg.seconds * 1000 };
+  $('#g-prompt').textContent = R.prompt;
+  $('#g-round').textContent = `Round ${i + 1}/${cfg.rounds.length}`;
+  $('#g-time span').textContent = fmtTime(cfg.seconds); $('#g-time').classList.remove('urgent'); $('#g-tfill').style.width = '100%';
+  G.phase = 'intro'; G.phaseUntil = G.t + 1800;
+  showBig(`Round ${i + 1}`, 'intro', R.prompt);
+}
+function startPlay() {
+  hideBig();
+  G.phase = 'play'; G.round.endsAt = G.t + G.round.dur; G.nextSpawn = G.t + 250; G.lastSpawn = G.t; G.timerShown = -1;
+}
+
+function playStep() {
+  const R = G.round, left = R.endsAt - G.t;
+  updateTimerUI(left);
+  if (R.pool.length === 0) { endRound('clear', left); return; }
+  if (left <= 0) { endRound('time', 0); return; }
+  trySpawn();
+}
+
+function updateTimerUI(left) {
+  const s = Math.ceil(Math.max(0, left) / 1000);
+  if (s !== G.timerShown) {
+    G.timerShown = s; $('#g-time span').textContent = fmtTime(s);
+    $('#g-time').classList.toggle('urgent', s <= 10);
+    if (s <= 5 && s > 0) Sound.tick();
+  }
+  $('#g-tfill').style.width = (Math.max(0, left) / G.round.dur * 100) + '%';
+}
+
+function pickItem() {
+  const R = G.round, D = DIFF[difficulty];
+  const shown = new Set(G.moles.map(m => m.item.text));
+  const rem = R.pool.filter(x => !shown.has(x)), wr = R.wrong.filter(x => !shown.has(x));
+  const correctShown = G.moles.some(m => m.item.correct && m.state === 'up');
+  let wantCorrect = Math.random() < (correctShown ? D.pc * .7 : .85);
+  if (!rem.length) wantCorrect = false;
+  if (!wr.length) wantCorrect = true;
+  if (wantCorrect && rem.length) return { text: pick(rem), correct: true };
+  if (wr.length) return { text: pick(wr), correct: false };
+  return null;
+}
+
+function trySpawn() {
+  const D = DIFF[difficulty], active = G.moles.length;
+  if (active >= D.max) return;
+  const due = G.t >= G.nextSpawn || (active === 0 && G.t - G.lastSpawn >= 250);
+  if (!due) return;
+  const item = pickItem(); if (!item) return;
+  const used = new Set(G.moles.map(m => m.cell));
+  let free = [];
+  for (let i = 0; i < cells.length; i++) if (!used.has(i)) free.push(i);
+  if (!free.length) return;
+  if (free.length > 1) free = free.filter(i => i !== G.lastCell);
+  const ci = pick(free), dur = rand(D.up[0], D.up[1]), el = moleEls[ci];
+  el.classList.remove('hit', 'good', 'bad');
+  setSign(el, item.text, true);
+  const m = { cell: ci, item, born: G.t, upUntil: G.t + dur, state: 'up', freeAt: 0, downAt: 0, down: false, el };
+  G.moles.push(m); G.lastCell = ci; G.lastSpawn = G.t; G.nextSpawn = G.t + rand(D.gap[0], D.gap[1]);
+  void el.offsetWidth; el.classList.add('up'); Sound.pop();
+}
+
+function signPoint(m) {
+  const r = $('.sign', m.el).getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top };
+}
+
+function updateMoles() {
+  for (let k = G.moles.length - 1; k >= 0; k--) {
+    const m = G.moles[k];
+    if (m.state === 'up') {
+      if (G.phase === 'play' && G.t >= m.upUntil) {
+        const p = signPoint(m);
+        m.state = 'hiding'; m.freeAt = G.t + 260; m.el.classList.remove('up');
+        if (m.item.correct) onMissed(m, p);
+      }
+    } else {
+      if (m.state === 'hit' && !m.down && G.t >= m.downAt) { m.down = true; m.el.classList.remove('up'); }
+      if (G.t >= m.freeAt) { m.el.classList.remove('up', 'hit', 'good', 'bad'); G.moles.splice(k, 1); }
+    }
+  }
+}
+function retreatAll() {
+  G.moles.forEach(m => { if (m.state === 'up') { m.state = 'hiding'; m.freeAt = G.t + 260; m.el.classList.remove('up'); } });
+}
+function onMissed(m, p) {
+  G.streak = 0;
+  G.mistakes.push({ type: 'missed_correct', item: m.item.text, prompt: G.round.prompt, round: G.round.idx + 1, atSec: Math.round(G.timeSpent / 1000) });
+  Sound.miss(); floatText('Missed it!', p.x, p.y, 'miss'); updateHud();
+}
+
+function whack(i) {
+  if (!G || G.phase !== 'play' || G.paused) return;
+  const m = G.moles.find(x => x.cell === i && x.state === 'up');
+  if (!m) { Sound.thud(); return; }
+  const p = signPoint(m);
+  m.state = 'hit'; m.downAt = G.t + 320; m.freeAt = G.t + 620;
+  m.el.classList.add('hit', m.item.correct ? 'good' : 'bad');
+  Sound.bonk();
+  if (m.item.correct) {
+    G.streak++; G.bestStreak = Math.max(G.bestStreak, G.streak);
+    const frac = Math.max(0, (m.upUntil - G.t) / (m.upUntil - m.born));
+    const pts = 10 + Math.min(G.streak - 1, 5) * 2 + Math.round(frac * 5);
+    G.score += pts; G.hits++; G.round.found++;
+    const ix = G.round.pool.indexOf(m.item.text); if (ix > -1) G.round.pool.splice(ix, 1);
+    Sound.squeak(); Sound.good();
+    fx.burst(p.x, p.y, 'good'); floatText('+' + pts, p.x, p.y - 10, 'good');
+  } else {
+    G.lives--; G.streak = 0; G.score = Math.max(0, G.score - 5);
+    G.mistakes.push({ type: 'wrong_hit', item: m.item.text, prompt: G.round.prompt, round: G.round.idx + 1, atSec: Math.round(G.timeSpent / 1000) });
+    Sound.oops(); fx.burst(p.x, p.y, 'bad'); floatText('Oops! 💔', p.x, p.y - 10, 'bad');
+    const a = $('#arena'); a.classList.remove('shake'); void a.offsetWidth; a.classList.add('shake');
+    renderHearts(true);
+    if (G.lives <= 0) {
+      G.phase = 'dying'; G.phaseUntil = G.t + 1200; retreatAll();
+      showBig('Oh no! 💔', 'msg', 'Out of hearts');
+    }
+  }
+  updateHud();
+}
+
+function endRound(reason, leftMs) {
+  const R = G.round;
+  G.phase = 'between'; retreatAll();
+  let bonus = 0;
+  if (reason === 'clear') { bonus = 10 + Math.floor(leftMs / 2000); G.score += bonus; }
+  G.roundLog.push({ round: R.idx + 1, prompt: R.prompt, found: R.found, total: R.total, reason });
+  const sub = `${R.found}/${R.total} found` + (bonus ? ` · +${bonus} bonus` : '');
+  if (reason === 'clear') { showBig('Round clear! 🎉', 'msg', sub); Sound.roundClear(); fx.burst(innerWidth / 2, innerHeight * .3, 'party'); }
+  else { showBig("Time's up! ⏰", 'msg', sub); Sound.timeUp(); }
+  G.phaseUntil = G.t + 1800; updateHud();
+}
+
+function updateHud() {
+  $('#g-score').textContent = G.score;
+  $('#g-streak span').textContent = G.streak; $('#g-streak').classList.toggle('on', G.streak >= 2);
+}
+function renderHearts(pulse) {
+  const box = $('#g-hearts'); let h = '';
+  for (let i = 0; i < cfg.lives; i++) h += `<span class="heart${i >= G.lives ? ' lost' : ''}${pulse && i === G.lives ? ' pulse' : ''}">❤️</span>`;
+  box.innerHTML = h;
+}
+function showBig(main, kind, sub) {
+  const b = $('#big'), m = $('.big-main', b);
+  b.className = 'big show ' + (kind || ''); m.textContent = main; $('.big-sub', b).textContent = sub || '';
+  m.style.animation = 'none'; void m.offsetWidth; m.style.animation = '';
+}
+function hideBig() { $('#big').classList.remove('show'); }
+
+function setPaused(p) {
+  if (!G || !['intro', 'play', 'between', 'countdown'].includes(G.phase)) return;
+  G.paused = p; lastTs = 0;
+  $('#pause').classList.toggle('show', p);
+}
+
+/* ---------------- finish + result ---------------- */
+function finishGame(outcome) {
+  cancelAnimationFrame(raf); raf = 0;
+  G.phase = 'over'; hideBig();
+  const pct = G.totalTargets ? G.hits / G.totalTargets : 0;
+  let stars = pct >= .9 ? 3 : pct >= .6 ? 2 : pct >= .25 ? 1 : 0;
+  if (outcome === 'lives') stars = Math.min(stars, 1);
+  const now = new Date();
+  const res = {
+    id: uid(), studentName: cfg.name, attempt, score: G.score, stars,
+    timeSpentSec: Math.round(G.timeSpent / 1000), difficulty: DIFF[difficulty].label, outcome,
+    correctHits: G.hits, totalTargets: G.totalTargets, bestStreak: G.bestStreak,
+    mistakes: G.mistakes.map(m => Object.assign({}, m)), rounds: G.roundLog.map(r => Object.assign({}, r)),
+    date: ymd(now), localTime: ymd(now) + ' ' + hms(now), timestamp: now.toISOString()
+  };
+  shownResult = res;
+  renderResult(res);
+  show('result');
+  deliverResult(res);
+}
+
+function fmtMistake(m) {
+  return (m.type === 'wrong_hit' ? 'Hit wrong: “' : 'Missed: “') + m.item + '”' + (m.round ? ' (Round ' + m.round + ')' : '');
+}
+
+function renderResult(res) {
+  const titles = {
+    completed: res.stars >= 2 ? `Awesome, ${res.studentName}! 🎉` : `Good try, ${res.studentName}! 💪`,
+    lives: `Oh no, out of hearts! 💔`
+  };
+  $('#r-title').textContent = titles[res.outcome] || 'Game over';
+  $('#r-sub').textContent = `Attempt #${res.attempt} · ${res.outcome === 'lives' ? 'Try again, you can do it!' : 'You finished every round!'}`;
+  $('#r-score').textContent = res.score;
+  $('#r-hits').textContent = `${res.correctHits}/${res.totalTargets}`;
+  $('#r-time').textContent = fmtTime(res.timeSpentSec);
+  $('#r-diff').textContent = res.difficulty;
+  $('#r-miscount').textContent = res.mistakes.length;
+  const ul = $('#r-mistakes');
+  res.mistakes.slice(0, 12).forEach(m => { const li = document.createElement('li'); li.textContent = fmtMistake(m); ul.appendChild(li); });
+  if (res.mistakes.length > 12) { const li = document.createElement('li'); li.textContent = `…and ${res.mistakes.length - 12} more`; ul.appendChild(li); }
+  $('#r-mist-wrap').hidden = !res.mistakes.length;
+  $$('#r-stars .star').forEach((s, i) => {
+    s.classList.remove('on');
+    if (i < res.stars) { s.style.animationDelay = (.35 + i * .45) + 's'; later(() => { s.classList.add('on'); Sound.star(i); }, 350 + i * 450); }
+  });
+  later(() => {
+    if (res.stars >= 2) { Sound.win(); fx.burst(innerWidth / 2, innerHeight * .25, 'party'); }
+    else Sound.lose();
+  }, 300);
+  $('#r-back').hidden = cfg.mode !== 'preview';
+}
+
+/* ---------------- sync to Google Sheets ---------------- */
+async function postToSheet(url, payload) {
+  const body = JSON.stringify(payload);
+  const u = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();   // anti-cache
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, cache: 'no-store', redirect: 'follow', signal: ctl.signal });
+    clearTimeout(to);
+    let j = null; try { j = await r.json(); } catch (e) { /* opaque or non-JSON */ }
+    if (j && j.ok === false) return { status: 'error', detail: j.error || 'Script error' };
+    return { status: 'confirmed', detail: j };
+  } catch (e1) {
+    clearTimeout(to);
+    try {   // CORS blocked the reply: send again "blind" (the script ignores duplicate ids)
+      await fetch(u, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, cache: 'no-store', keepalive: body.length < 60000 });
+      return { status: 'sent' };
+    } catch (e2) { return { status: 'failed', detail: String(e2 && e2.message || e2) }; }
+  }
+}
+
+function setSyncUI(res, state) {
+  if (shownResult !== res) return;      // a newer game is on screen
+  syncState = state;
+  const el = $('#sync-status');
+  const msgs = {
+    pending: ['☁️ Sending your score to your teacher…', ''],
+    ok: ['✅ Sent to your teacher!', 'ok'],
+    fail: ['⚠️ Couldn\'t reach your teacher\'s sheet. <a href="#" id="sync-retry">Try again</a>', 'fail'],
+    none: ['', ''],
+    preview: ['👀 Preview mode: saved on this device only (not sent).', '']
+  };
+  const [html, cls] = msgs[state] || ['', ''];
+  el.className = 'sync ' + cls; el.innerHTML = html;
+}
+async function deliverResult(res) {
+  if (cfg.mode === 'preview') { saveLocalResult(res); setSyncUI(res, 'preview'); return; }
+  if (!cfg.syncUrl) { setSyncUI(res, 'none'); return; }
+  setSyncUI(res, 'pending');
+  const payload = Object.assign({}, res, { source: 'student-link' });
+  for (let n = 1; n <= 3; n++) {
+    const r = await postToSheet(cfg.syncUrl, payload);
+    if (r.status === 'confirmed' || r.status === 'sent') { setSyncUI(res, 'ok'); return; }
+    await sleep(1500 * n);
+  }
+  setSyncUI(res, 'fail');
+}
+function saveLocalResult(res) {
+  const row = Object.assign({}, res, { student: res.studentName, source: 'Preview' });
+  delete row.rounds;
+  Store.data.results.unshift(row);
+  Store.data.results = Store.data.results.slice(0, 300);
+  Store.save();
+}
+
+/* ---------------- student screens ---------------- */
+function showStart() {
+  wipeSession();
+  $('#st-name').textContent = cfg.name;
+  const n = cfg.rounds.length;
+  $('#st-info').textContent = `${n} round${n > 1 ? 's' : ''} · ${cfg.seconds} seconds each · ${cfg.lives} ${cfg.lives > 1 ? 'lives' : 'life'}`;
+  $('#st-back').hidden = cfg.mode !== 'preview';
+  renderDiffs(); syncMuteButtons();
+  show('start');
+  heroMole('hero-start', 'Ready?');
+}
+function renderDiffs() {
+  $('#st-diffs').innerHTML = Object.values(DIFF).map(d =>
+    `<button class="diff${d.key === difficulty ? ' sel' : ''}" data-d="${d.key}"><span class="e">${d.emoji}</span>${d.label}<small>${d.desc}</small></button>`).join('');
+}
+function showDenied(reason) {
+  const t = {
+    expired: ['This link has expired ⏰', 'The time for this link has run out.'],
+    bad: ['Oops! This link doesn\'t work', 'The link looks broken, incomplete or changed.'],
+    missing: ['Oops! This link is incomplete', 'Part of the link is missing.']
+  }[reason] || ['Access denied', ''];
+  $('#denied-title').textContent = t[0]; $('#denied-text').textContent = t[1];
+  show('denied'); heroMole('hero-denied', 'Oops!');
+}
+
+/* ---------------------------------------------------------------
+   Teacher portal
+   --------------------------------------------------------------- */
+let teacherUnlocked = false, pinFails = 0, pinLockUntil = 0;
+let sheetRows = [];
+
+function openPin() {
+  $('#pin-input').value = ''; $('#pin-msg').textContent = '';
+  show('pin'); setTimeout(() => $('#pin-input').focus(), 50);
+}
+function tryPin() {
+  const now = Date.now();
+  if (now < pinLockUntil) { $('#pin-msg').textContent = `Too many tries. Wait ${Math.ceil((pinLockUntil - now) / 1000)}s.`; return; }
+  const entered = pinHash($('#pin-input').value.trim());
+  const stored = Store.data.pinHash || pinHash(CONFIG.DEFAULT_PIN);
+  if (safeEq(entered, stored)) { pinFails = 0; teacherUnlocked = true; openTeacher(); return; }
+  pinFails++;
+  const c = $('#pin-card'); c.classList.remove('shake-it'); void c.offsetWidth; c.classList.add('shake-it');
+  if (pinFails >= 5) { pinLockUntil = now + 30000; pinFails = 0; $('#pin-msg').textContent = 'Too many tries. Locked for 30 seconds.'; }
+  else $('#pin-msg').textContent = 'Wrong PIN, try again.';
+  $('#pin-input').value = '';
+}
+function openTeacher() {
+  show('teacher');
+  $('#secret-warning').hidden = !CONFIG.SECRET.startsWith('molesmash-change-this');
+  $('#b-seconds').value = String(Store.data.seconds); $('#b-lives').value = String(Store.data.lives);
+  renderRounds(); openTab('builder');
+}
+function openTab(name) {
+  $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  $$('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'links') refreshLinksPanel();
+  if (name === 'results') renderResults();
+  if (name === 'sync') refreshSyncPanel();
+}
+
+/* ---- builder ---- */
+function roundHint(r) {
+  const b = buildRounds([r])[0], errs = validateRounds([b]);
+  return { text: `✅ ${b.correct.length} correct · ❌ ${b.wrong.length} wrong` + (errs.length ? ' — ' + errs.map(e => e.replace(/^Round \d+: /, '')).join(' ') : ''), bad: errs.length > 0 };
+}
+function renderRounds() {
+  const R = Store.data.rounds;
+  $('#rounds-list').innerHTML = R.map((r, i) => {
+    const h = roundHint(r);
+    return `<div class="round" data-i="${i}">
+      <div class="round-head"><span class="badge">Round ${i + 1}</span>
+        <div class="t-actions">
+          <button class="btn sm gray" data-act="up" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+          <button class="btn sm gray" data-act="down" ${i === R.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+          <button class="btn sm blue" data-act="dup" aria-label="Duplicate">⧉</button>
+          <button class="btn sm red" data-act="del" aria-label="Delete">🗑</button>
+        </div></div>
+      <label>Prompt shown to students<input class="inp" data-f="prompt" value="${esc(r.prompt)}" placeholder="Whack all: Living Things"></label>
+      <div class="two">
+        <label>✅ Correct answers / keywords<textarea class="inp" data-f="correct" rows="5">${esc(r.correct)}</textarea></label>
+        <label>❌ Wrong answers / distractors<textarea class="inp" data-f="wrong" rows="5">${esc(r.wrong)}</textarea></label>
+      </div>
+      <div class="hint${h.bad ? ' bad' : ''}">${esc(h.text)}</div></div>`;
+  }).join('');
+}
+function initBuilder() {
+  const list = $('#rounds-list');
+  list.addEventListener('input', e => {
+    const f = e.target.dataset.f; if (!f) return;
+    const box = e.target.closest('.round'), i = +box.dataset.i;
+    Store.data.rounds[i][f] = e.target.value;
+    const h = roundHint(Store.data.rounds[i]), hint = $('.hint', box);
+    hint.textContent = h.text; hint.classList.toggle('bad', h.bad);
+    scheduleSave();
+  });
+  list.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const i = +b.closest('.round').dataset.i, R = Store.data.rounds, act = b.dataset.act;
+    if (act === 'up' && i > 0) [R[i - 1], R[i]] = [R[i], R[i - 1]];
+    else if (act === 'down' && i < R.length - 1) [R[i + 1], R[i]] = [R[i], R[i + 1]];
+    else if (act === 'dup') R.splice(i + 1, 0, clone(R[i]));
+    else if (act === 'del') { if (R.length === 1) { toast('Keep at least one round'); return; } if (!confirm('Delete this round?')) return; R.splice(i, 1); }
+    renderRounds(); scheduleSave();
+  });
+  $('#b-add').onclick = () => { Store.data.rounds.push({ prompt: '', correct: '', wrong: '' }); renderRounds(); scheduleSave(); const l = $$('.round'); l[l.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  $('#b-reset').onclick = () => { if (confirm('Replace all rounds with the 3 sample rounds?')) { Store.data.rounds = clone(SAMPLE_ROUNDS); renderRounds(); scheduleSave(); } };
+  $('#b-seconds').onchange = e => { Store.data.seconds = +e.target.value; scheduleSave(); };
+  $('#b-lives').onchange = e => { Store.data.lives = +e.target.value; scheduleSave(); };
+}
+
+/* ---- links ---- */
+let generatedLinks = [];
+function defaultBase() { return location.protocol === 'file:' ? '' : location.origin + location.pathname; }
+function refreshLinksPanel() {
+  const inp = $('#l-base');
+  if (!inp.value) inp.value = Store.data.baseUrl || defaultBase();
+  checkBase();
+  $('#l-sync').disabled = !Store.data.syncUrl;
+  if (!Store.data.syncUrl) $('#l-sync').checked = false;
+}
+function checkBase() {
+  const v = $('#l-base').value.trim(), w = $('#l-base-warn');
+  if (!v) { w.hidden = false; w.textContent = '⚠️ This file is open from your computer (file://). Links only work for students once the file is published online (for example GitHub Pages, Netlify or your school website). Paste the final web address above.'; return; }
+  if (/^file:/i.test(v)) { w.hidden = false; w.textContent = '⚠️ A file:// address will not work on student devices. Publish the file online and paste its web address.'; return; }
+  w.hidden = true;
+}
+function generateLinks() {
+  const errBox = $('#l-errors'); errBox.hidden = true;
+  const names = Array.from(new Set($('#l-names').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean)));
+  const rounds = buildRounds(Store.data.rounds), errs = validateRounds(rounds);
+  let base;
+  try { const u = new URL($('#l-base').value.trim()); u.search = ''; u.hash = ''; base = u.toString(); }
+  catch (e) { errs.push('Enter the full web address of this game file (starting with https://).'); }
+  if (!names.length) errs.push('Add at least one student name.');
+  let expiry = 0;
+  const ex = $('#l-exp').value;
+  if (ex === 'custom') {
+    const d = $('#l-exp-date').value;
+    if (!d) errs.push('Pick the last valid day for the links.');
+    else expiry = new Date(d + 'T23:59:59').getTime();
+  } else if (+ex > 0) expiry = Date.now() + (+ex) * 864e5;
+  if (errs.length) { errBox.hidden = false; errBox.innerHTML = errs.map(e => '• ' + esc(e)).join('<br>'); return; }
+  Store.data.baseUrl = base; Store.save();
+  const useSync = $('#l-sync').checked && !!Store.data.syncUrl;
+  generatedLinks = names.map(name => {
+    const payload = { v: 1, n: name, r: rounds.map(r => [r.prompt, r.correct, r.wrong]), t: Store.data.seconds, l: Store.data.lives, e: expiry, u: useSync ? Store.data.syncUrl : '', i: Date.now() };
+    return { name, url: base + '?student=' + encodeURIComponent(name) + '&code=' + signPayload(payload) };
+  });
+  $('#l-out').innerHTML = generatedLinks.map((l, i) =>
+    `<div class="link-row"><b>${esc(l.name)}</b><input class="inp" readonly value="${esc(l.url)}" data-sel>
+     <button class="btn sm" data-copy="${i}">Copy</button><button class="btn sm blue" data-open="${i}">Open</button></div>`).join('');
+  $('#l-out-card').hidden = false; $('#l-copyall').disabled = false;
+  $('#l-len-warn').hidden = !generatedLinks.some(l => l.url.length > 2000);
+  toast(`${generatedLinks.length} link${generatedLinks.length > 1 ? 's' : ''} ready ✨`);
+}
+function initLinks() {
+  $('#l-base').addEventListener('input', checkBase);
+  $('#l-exp').onchange = e => { $('#l-exp-date-wrap').hidden = e.target.value !== 'custom'; };
+  $('#l-gen').onclick = generateLinks;
+  $('#l-copyall').onclick = async () => { if (await copyText(generatedLinks.map(l => `${l.name}: ${l.url}`).join('\n'))) toast('All links copied 📋'); else toast('Copy failed, select the links manually'); };
+  $('#l-out').addEventListener('click', async e => {
+    const c = e.target.closest('[data-copy]'), o = e.target.closest('[data-open]');
+    if (c) { toast((await copyText(generatedLinks[+c.dataset.copy].url)) ? 'Link copied 📋' : 'Copy failed'); }
+    if (o) window.open(generatedLinks[+o.dataset.open].url, '_blank', 'noopener');
+  });
+  $('#l-out').addEventListener('focusin', e => { if (e.target.matches('[data-sel]')) e.target.select(); });
+}
+
+/* ---- results ---- */
+function allRows() {
+  const local = Store.data.results.map(r => ({
+    id: r.id, timestamp: r.timestamp, student: r.studentName || r.student, attempt: num(r.attempt, 1), score: num(r.score), stars: num(r.stars),
+    timeSpentSec: num(r.timeSpentSec), difficulty: r.difficulty, outcome: r.outcome, correctHits: num(r.correctHits), totalTargets: num(r.totalTargets),
+    mistakes: Array.isArray(r.mistakes) ? r.mistakes : [], source: 'Preview'
+  }));
+  const ids = new Set(local.map(r => r.id));
+  const sheet = sheetRows.filter(r => !ids.has(r.id)).map(r => Object.assign({}, r, { source: 'Sheet' }));
+  return local.concat(sheet).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+}
+function viewRows() {
+  const q = $('#r-search').value.trim().toLowerCase();
+  let rows = allRows().filter(r => !q || String(r.student).toLowerCase().includes(q));
+  if ($('#r-view').value === 'best') {
+    const by = new Map();
+    rows.forEach(r => {
+      const k = String(r.student).toLowerCase(), cur = by.get(k);
+      if (!cur) by.set(k, { best: r, attempts: 1, last: r.timestamp });
+      else {
+        cur.attempts++; if (String(r.timestamp) > String(cur.last)) cur.last = r.timestamp;
+        const b = cur.best;
+        if (r.score > b.score || (r.score === b.score && (r.stars > b.stars || (r.stars === b.stars && r.timeSpentSec < b.timeSpentSec)))) cur.best = r;
+      }
+    });
+    rows = Array.from(by.values()).map(v => Object.assign({}, v.best, { attempts: v.attempts, last: v.last }));
+    rows.sort((a, b) => b.score - a.score);
+  }
+  return rows;
+}
+function renderResults() {
+  const best = $('#r-view').value === 'best', rows = viewRows();
+  $('#r-head').innerHTML = best
+    ? '<tr><th>#</th><th>Student</th><th>Best score</th><th>Stars</th><th>Best time</th><th>Level</th><th>Attempts</th><th>Last played</th><th>Mistakes (best run)</th></tr>'
+    : '<tr><th>Date &amp; time</th><th>Student</th><th>Attempt</th><th>Score</th><th>Stars</th><th>Time</th><th>Level</th><th>Mistakes</th><th>Source</th></tr>';
+  const dt = ts => { const d = new Date(ts); return isNaN(d) ? '' : ymd(d) + ' ' + hms(d); };
+  const mist = r => r.mistakes && r.mistakes.length
+    ? `<details><summary>${r.mistakes.length} ⚠️</summary><ul>${r.mistakes.map(m => `<li>${esc(fmtMistake(m))}</li>`).join('')}</ul></details>` : '<span class="muted">0</span>';
+  const starsOf = n => '⭐'.repeat(Math.max(0, Math.min(3, n))) || '–';
+  $('#r-body').innerHTML = rows.length ? rows.map((r, i) => best
+    ? `<tr><td>${i + 1}</td><td><b>${esc(r.student)}</b></td><td>${r.score}</td><td>${starsOf(r.stars)}</td><td>${fmtTime(r.timeSpentSec)}</td><td>${esc(r.difficulty)}</td><td>${r.attempts}</td><td>${esc(dt(r.last))}</td><td>${mist(r)}</td></tr>`
+    : `<tr><td>${esc(dt(r.timestamp))}</td><td><b>${esc(r.student)}</b></td><td>${r.attempt}</td><td>${r.score}</td><td>${starsOf(r.stars)}</td><td>${fmtTime(r.timeSpentSec)}</td><td>${esc(r.difficulty)}</td><td>${mist(r)}</td><td>${esc(r.source)}</td></tr>`).join('')
+    : `<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">No results yet. Student scores arrive in your Google Sheet. Use <b>Load from Google Sheet</b> to see them here.</td></tr>`;
+  $('#r-msg').textContent = rows.length ? `${rows.length} row${rows.length > 1 ? 's' : ''}` : '';
+}
+async function fetchSheet() {
+  const url = Store.data.syncUrl, msg = $('#r-msg');
+  if (!url) { msg.className = 'hint bad'; msg.textContent = 'Add your Google Apps Script URL in the Sync tab first.'; return; }
+  msg.className = 'hint'; msg.textContent = 'Loading…';
+  try {
+    const u = url + (url.includes('?') ? '&' : '?') + 'action=list&_=' + Date.now();
+    const r = await fetch(u, { cache: 'no-store' }), j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Script returned an error');
+    sheetRows = (j.rows || []).map(x => ({
+      id: x.id || uid(), timestamp: x.timestamp, student: x.student, attempt: num(x.attempt, 1), score: num(x.score), stars: num(x.stars),
+      timeSpentSec: num(x.timeSpentSec), difficulty: x.difficulty, outcome: x.outcome, correctHits: num(x.correctHits), totalTargets: num(x.totalTargets),
+      mistakes: Array.isArray(x.mistakes) ? x.mistakes : []
+    }));
+    renderResults(); msg.className = 'hint'; msg.textContent = `Loaded ${sheetRows.length} result${sheetRows.length === 1 ? '' : 's'} from the sheet.`;
+  } catch (e) {
+    msg.className = 'hint bad';
+    msg.textContent = 'Could not read the sheet from the browser (' + (e.message || e) + '). Make sure the web app is deployed for "Anyone", or open the Google Sheet directly.';
+  }
+}
+function csvCell(v) {
+  let s = String(v == null ? '' : v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;       // neutralise spreadsheet formulas
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function exportCsv() {
+  const rows = allRows().filter(r => { const q = $('#r-search').value.trim().toLowerCase(); return !q || String(r.student).toLowerCase().includes(q); });
+  if (!rows.length) { toast('Nothing to export yet'); return; }
+  const head = ['Date', 'Time', 'Student', 'Attempt', 'Score', 'Stars', 'Time Spent (s)', 'Difficulty', 'Outcome', 'Correct Hits', 'Total Targets', 'Mistake Count', 'Mistakes', 'Source'];
+  const lines = [head.map(csvCell).join(',')];
+  rows.forEach(r => {
+    const d = new Date(r.timestamp), ok = !isNaN(d);
+    lines.push([ok ? ymd(d) : '', ok ? hms(d) : '', r.student, r.attempt, r.score, r.stars, r.timeSpentSec, r.difficulty, r.outcome, r.correctHits, r.totalTargets,
+      r.mistakes.length, r.mistakes.map(m => (m.type === 'wrong_hit' ? 'WRONG: ' : 'MISSED: ') + m.item + ' (R' + m.round + ')').join('; '), r.source].map(csvCell).join(','));
+  });
+  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'molesmash-results-' + ymd(new Date()) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function initResults() {
+  $('#r-search').addEventListener('input', renderResults);
+  $('#r-view').onchange = renderResults;
+  $('#r-fetch').onclick = fetchSheet;
+  $('#r-csv').onclick = exportCsv;
+  $('#r-clear').onclick = () => { if (confirm('Remove preview results stored on this device?')) { Store.data.results = []; Store.save(); renderResults(); } };
+}
+
+/* ---- sync tab ---- */
+function showSyncMsg(kind, html) { const m = $('#s-msg'); m.hidden = false; m.className = 'notice ' + kind; m.innerHTML = html; }
+function refreshSyncPanel() {
+  $('#s-url').value = Store.data.syncUrl || '';
+  $('#s-code').textContent = $('#gas-code').textContent.trim();
+  $('#s-msg').hidden = true;
+}
+function validSyncUrl(v) { return /^https:\/\/[^\s]+$/i.test(v); }
+function initSync() {
+  $('#s-save').onclick = () => {
+    const v = $('#s-url').value.trim();
+    if (v && !validSyncUrl(v)) { showSyncMsg('err', 'The URL must start with <b>https://</b> (it should end in <code>/exec</code>).'); return; }
+    Store.data.syncUrl = v; Store.save();
+    showSyncMsg('ok', v ? 'Saved ✓ New links will include this sync address.' : 'Sync address removed.');
+  };
+  $('#s-test').onclick = async () => {
+    const v = $('#s-url').value.trim();
+    if (!validSyncUrl(v)) { showSyncMsg('err', 'Paste your Web App URL first (https://script.google.com/…/exec).'); return; }
+    const btn = $('#s-test'); btn.disabled = true; showSyncMsg('warn', '⏳ Sending test row…');
+    const now = new Date();
+    const r = await postToSheet(v, {
+      id: uid(), studentName: 'TEST ROW (safe to delete)', attempt: 1, score: 100, stars: 3, timeSpentSec: 42, difficulty: 'Medium', outcome: 'completed',
+      correctHits: 10, totalTargets: 10, mistakes: [{ type: 'wrong_hit', item: 'Rock', prompt: 'Whack all: Living Things', round: 1, atSec: 12 }],
+      date: ymd(now), localTime: ymd(now) + ' ' + hms(now), timestamp: now.toISOString(), test: true
+    });
+    btn.disabled = false;
+    if (r.status === 'confirmed') showSyncMsg('ok', '✅ Test row added! Check the <b>MoleSmash Results</b> tab in your Google Sheet.');
+    else if (r.status === 'sent') showSyncMsg('warn', '📤 Sent, but your browser can\'t read Google\'s reply. Open the Sheet to confirm the test row appeared.');
+    else if (r.status === 'error') showSyncMsg('err', '❌ The script answered with an error: ' + esc(r.detail));
+    else showSyncMsg('err', '❌ Could not reach the URL (' + esc(r.detail || 'network error') + '). Check the address and that access is set to "Anyone".');
+  };
+  $('#s-copy').onclick = async () => toast((await copyText($('#s-code').textContent)) ? 'Script copied 📋' : 'Copy failed, select it manually');
+  $('#p-save').onclick = () => {
+    const oldP = $('#p-old').value.trim(), newP = $('#p-new').value.trim();
+    const stored = Store.data.pinHash || pinHash(CONFIG.DEFAULT_PIN);
+    if (!safeEq(pinHash(oldP), stored)) { toast('Current PIN is wrong'); return; }
+    if (!/^\d{4,12}$/.test(newP)) { toast('New PIN must be 4–12 digits'); return; }
+    Store.data.pinHash = pinHash(newP); Store.save(); $('#p-old').value = ''; $('#p-new').value = ''; toast('PIN changed ✓');
+  };
+}
+
+/* ---- preview ---- */
+function startPreview() {
+  const rounds = buildRounds(Store.data.rounds), errs = validateRounds(rounds);
+  if (errs.length) { toast(errs[0]); openTab('builder'); return; }
+  cfg = { name: 'Preview', rounds, seconds: Store.data.seconds, lives: Store.data.lives, syncUrl: '', mode: 'preview', linkId: 'preview' };
+  showStart();
+}
+
+/* ---------------------------------------------------------------
+   Wiring + boot
+   --------------------------------------------------------------- */
+function initEvents() {
+  $('#home-student').onclick = () => { $('#home-hint').hidden = false; Sound.click(); };
+  $('#home-teacher').onclick = () => { teacherUnlocked ? openTeacher() : openPin(); };
+  $('#denied-teacher').onclick = () => { teacherUnlocked ? openTeacher() : openPin(); };
+  $('#pin-ok').onclick = tryPin;
+  $('#pin-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryPin(); });
+  $('#pin-cancel').onclick = () => show('home');
+  $('#t-lock').onclick = () => { teacherUnlocked = false; show('home'); };
+  $('#t-preview').onclick = startPreview;
+  $$('.tab').forEach(b => b.onclick = () => openTab(b.dataset.tab));
+
+  $('#st-diffs').addEventListener('click', e => {
+    const b = e.target.closest('.diff'); if (!b) return;
+    difficulty = b.dataset.d; renderDiffs(); Sound.init(); Sound.click();
+  });
+  $('#st-start').onclick = startGame;
+  $('#st-back').onclick = () => { wipeSession(); openTeacher(); };
+  $('#st-mute').onclick = toggleMute; $('#g-mute').onclick = toggleMute;
+  $('#g-pause').onclick = () => setPaused(true);
+  $('#pa-resume').onclick = () => setPaused(false);
+  $('#pa-restart').onclick = startGame;
+  $('#pa-quit').onclick = () => { if (cfg) showStart(); };
+
+  $('#arena').addEventListener('pointerdown', e => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    e.preventDefault(); whack(+c.dataset.i);
+  });
+  $('#r-again').onclick = () => {
+    if (syncState === 'fail' && !confirm('Your score has not reached your teacher yet. Play again anyway?')) return;
+    startGame();
+  };
+  $('#r-change').onclick = showStart;
+  $('#r-back').onclick = () => { wipeSession(); openTeacher(); };
+  $('#sync-status').addEventListener('click', e => {
+    if (e.target.id === 'sync-retry') { e.preventDefault(); if (shownResult) deliverResult(shownResult); }
+  });
+
+  window.addEventListener('keydown', e => {
+    if (current !== 'game' || !G) return;
+    if (e.key === 'Escape') { setPaused(!G.paused); return; }
+    if (/^[1-9]$/.test(e.key)) whack(+e.key - 1);
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G && G.phase === 'play') setPaused(true); });
+}
+
+function decorate() {
+  const logo = $('#logo');
+  'MoleSmash'.split('').forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.animationDelay = (i * .09) + 's'; logo.appendChild(s); });
+  const sc = $('#scenery'), fl = ['🌼', '🌸', '🌷', '🌻', '🍄', '🌼', '🌸'];
+  for (let i = 0; i < 14; i++) {
+    const f = document.createElement('div'); f.className = 'flower'; f.textContent = fl[i % fl.length];
+    f.style.left = rand(1, 96) + 'vw'; f.style.top = rand(46, 97) + 'vh'; f.style.fontSize = rand(18, 32) + 'px'; f.style.animationDelay = (-rand(0, 3)) + 's';
+    sc.appendChild(f);
+  }
+}
+
+function boot() {
+  Store.load(); decorate(); initEvents(); initBuilder(); initLinks(); initResults(); initSync();
+  heroMole('hero-home', 'Hi!');
+  const q = new URLSearchParams(location.search);
+  if (!q.has('student') && !q.has('code')) { show('home'); return; }
+  const res = parseLink(q.get('student'), q.get('code'));
+  if (!res.ok) { showDenied(res.reason); return; }
+  cfg = res.cfg; showStart();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
